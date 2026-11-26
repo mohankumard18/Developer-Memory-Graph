@@ -53,38 +53,52 @@ class DeveloperMemoryGraphDB:
 
     def ingest_graph(self, extracted: ExtractedMemoryGraph):
         allowed_labels = {"Developer", "Repository", "Commit", "Issue", "Technology"}
+        nodes_by_label: dict[str, list[dict]] = {}
+        for entity in extracted.entities:
+            label = entity.label if entity.label in allowed_labels else "Entity"
+            nodes_by_label.setdefault(label, []).append(
+                {
+                    "id": entity.id.lower(),
+                    "name": entity.name,
+                    "summary": entity.summary,
+                }
+            )
+
+        rels_by_type: dict[str, list[dict]] = {}
+        for rel in extracted.relationships:
+            rel_type = "".join(
+                c if c.isalnum() or c == "_" else "_" for c in rel.relation.upper()
+            ) or "RELATED_TO"
+            rels_by_type.setdefault(rel_type, []).append(
+                {
+                    "source": rel.source.lower(),
+                    "target": rel.target.lower(),
+                    "context": rel.context,
+                }
+            )
+
         with self.driver.session() as session:
-            for entity in extracted.entities:
-                label = entity.label if entity.label in allowed_labels else "Entity"
-                query = f"""
-                MERGE (n:{label} {{id: $id}})
-                SET n.name = $name,
-                    n.summary = $summary
-                """
+            for label, items in nodes_by_label.items():
                 session.run(
-                    query,
-                    id=entity.id.lower(),
-                    name=entity.name,
-                    summary=entity.summary,
+                    f"""
+                    UNWIND $items AS item
+                    MERGE (n:{label} {{id: item.id}})
+                    SET n.name = item.name,
+                        n.summary = item.summary
+                    """,
+                    items=items,
                 )
 
-            for rel in extracted.relationships:
-                rel_type = "".join(
-                    c if c.isalnum() or c == "_" else "_" for c in rel.relation.upper()
-                )
-                if not rel_type:
-                    rel_type = "RELATED_TO"
-                query = f"""
-                MATCH (a {{id: $source}})
-                MATCH (b {{id: $target}})
-                MERGE (a)-[r:{rel_type}]->(b)
-                SET r.context = $context
-                """
+            for rel_type, items in rels_by_type.items():
                 session.run(
-                    query,
-                    source=rel.source.lower(),
-                    target=rel.target.lower(),
-                    context=rel.context,
+                    f"""
+                    UNWIND $items AS item
+                    MATCH (a {{id: item.source}})
+                    MATCH (b {{id: item.target}})
+                    MERGE (a)-[r:{rel_type}]->(b)
+                    SET r.context = item.context
+                    """,
+                    items=items,
                 )
 
     def fetch_all_graph(self):

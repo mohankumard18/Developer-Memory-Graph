@@ -7,93 +7,80 @@ class GraphAnalyticsEngine:
         self.db = db
 
     def build_networkx_graph(self) -> nx.DiGraph:
+        nodes, edges = self.db.fetch_all_graph()
         G = nx.DiGraph()
-        with self.db.driver.session() as session:
-            nodes_result = session.run(
-                """
-                MATCH (n)
-                RETURN n.id AS id, labels(n)[0] AS label, n.name AS name, n.summary AS summary
-                """
-            )
-            for record in nodes_result:
+        for n in nodes:
+            if n.get("id"):
                 G.add_node(
-                    record["id"],
-                    label=record["label"],
-                    name=record["name"],
-                    summary=record["summary"],
+                    n["id"],
+                    label=n.get("label", "Entity"),
+                    name=n.get("name", n["id"]),
+                    summary=n.get("summary", ""),
                 )
-
-            edges_result = session.run(
-                """
-                MATCH (a)-[r]->(b)
-                RETURN a.id AS source, b.id AS target, type(r) AS relation, r.context AS context
-                """
-            )
-            for record in edges_result:
+        for e in edges:
+            src, tgt = e.get("source"), e.get("target")
+            if src and tgt:
                 G.add_edge(
-                    record["source"],
-                    record["target"],
-                    relation=record["relation"],
-                    context=record["context"],
+                    src,
+                    tgt,
+                    relation=e.get("relation", "RELATED_TO"),
+                    context=e.get("context", ""),
                 )
         return G
 
     def compute_metrics(self) -> dict:
         G = self.build_networkx_graph()
-        if G.number_of_nodes() == 0:
-            return {"error": "Graph is empty. Ingest some logs first."}
+        num_nodes = G.number_of_nodes()
+        num_edges = G.number_of_edges()
 
-        degree_centrality = nx.degree_centrality(G)
-        betweenness_centrality = nx.betweenness_centrality(G)
-        pagerank = nx.pagerank(G, alpha=0.85)
+        if num_nodes == 0:
+            return {
+                "total_nodes": 0,
+                "total_edges": 0,
+                "density": 0.0,
+                "top_central_nodes": [],
+            }
 
-        ranked_nodes = []
+        degree_c = nx.degree_centrality(G)
+        betweenness_c = nx.betweenness_centrality(G)
+        # Pure-Python power iteration avoids heavy scipy memory spikes on 512MB cloud containers
+        pagerank_c = self._pure_python_pagerank(G)
+
+        ranked = []
         for node_id, data in G.nodes(data=True):
-            ranked_nodes.append(
+            ranked.append(
                 {
                     "id": node_id,
-                    "label": data.get("label", "Unknown"),
-                    "name": data.get("name", node_id),
-                    "in_degree": G.in_degree(node_id),
-                    "out_degree": G.out_degree(node_id),
-                    "degree_centrality": round(degree_centrality[node_id], 4),
-                    "betweenness_centrality": round(betweenness_centrality[node_id], 4),
-                    "pagerank": round(pagerank[node_id], 4),
+                    "label": data.get("label", "Entity"),
+                    "degree_centrality": round(degree_c.get(node_id, 0.0), 4),
+                    "betweenness_centrality": round(betweenness_c.get(node_id, 0.0), 4),
+                    "pagerank": round(pagerank_c.get(node_id, 0.0), 4),
                 }
             )
 
-        ranked_nodes.sort(key=lambda x: x["degree_centrality"], reverse=True)
-
-        tech_nodes = [n for n in ranked_nodes if n["label"] == "Technology"]
-        bottlenecks = [n for n in ranked_nodes if n["betweenness_centrality"] > 0]
-
+        ranked.sort(key=lambda x: (x["degree_centrality"], x["pagerank"]), reverse=True)
         return {
-            "total_nodes": G.number_of_nodes(),
-            "total_edges": G.number_of_edges(),
+            "total_nodes": num_nodes,
+            "total_edges": num_edges,
             "density": round(nx.density(G), 4),
-            "top_central_nodes": ranked_nodes[:5],
-            "architectural_bottlenecks": bottlenecks,
-            "technology_footprint": tech_nodes,
-            "all_nodes": ranked_nodes,
+            "top_central_nodes": ranked[:10],
         }
 
-
-if __name__ == "__main__":
-    db = DeveloperMemoryGraphDB()
-    try:
-        engine = GraphAnalyticsEngine(db)
-        report = engine.compute_metrics()
-
-        print("=== DEVELOPER MEMORY GRAPH ANALYTICS ===", flush=True)
-        print(f"Total Nodes: {report['total_nodes']} | Total Edges: {report['total_edges']} | Density: {report['density']}")
-
-        print("\nTop Central Nodes (Degree & PageRank):")
-        for node in report["top_central_nodes"]:
-            print(
-                f"  - [{node['label']}] {node['id']} | "
-                f"Degree: {node['degree_centrality']} | "
-                f"Betweenness: {node['betweenness_centrality']} | "
-                f"PageRank: {node['pagerank']}"
-            )
-    finally:
-        db.close()
+    def _pure_python_pagerank(self, G: nx.DiGraph, alpha: float = 0.85, max_iter: int = 50) -> dict:
+        nodes = list(G.nodes())
+        n = len(nodes)
+        if n == 0:
+            return {}
+        rank = {node: 1.0 / n for node in nodes}
+        for _ in range(max_iter):
+            new_rank = {node: (1.0 - alpha) / n for node in nodes}
+            dangling_sum = sum(rank[node] for node in nodes if G.out_degree(node) == 0)
+            for node in nodes:
+                new_rank[node] += alpha * dangling_sum / n
+                out_deg = G.out_degree(node)
+                if out_deg > 0:
+                    share = alpha * rank[node] / out_deg
+                    for nbr in G.successors(node):
+                        new_rank[nbr] += share
+            rank = new_rank
+        return rank
