@@ -59,13 +59,15 @@ def fetch_github_json(url: str):
         return json.loads(resp.read().decode("utf-8"))
 
 
-def build_github_summary_log(repo_url: str) -> str:
+def parse_github_owner_repo(repo_url: str) -> tuple[str, str]:
     parsed = urlparse(repo_url.strip().rstrip("/"))
     parts = [p for p in parsed.path.split("/") if p]
     if len(parts) < 2:
         raise ValueError("Invalid GitHub URL. Expected format: https://github.com/owner/repo")
+    return parts[0], parts[1].removesuffix(".git")
 
-    owner, repo = parts[0], parts[1].removesuffix(".git")
+
+def build_github_summary_log(owner: str, repo: str) -> str:
     base_api = f"https://api.github.com/repos/{owner}/{repo}"
 
     repo_data = fetch_github_json(base_api)
@@ -149,14 +151,22 @@ def ingest_github_repo(req: GitHubIngestRequest):
     if not req.repo_url.strip():
         raise HTTPException(status_code=400, detail="GitHub repository URL cannot be empty.")
     try:
-        summary_log = build_github_summary_log(req.repo_url)
+        owner, repo = parse_github_owner_repo(req.repo_url)
+        summary_log = build_github_summary_log(owner, repo)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"GitHub fetch failed: {e}")
 
+    existing_owners = db.get_current_owners()
+    if not existing_owners or existing_owners != {owner.lower()}:
+        db.clear_graph()
+
     extracted = extract_memory_from_text(summary_log)
     db.ingest_graph(extracted)
+    db.set_repo_owner(repo, owner)
+
     return {
         "status": "success",
+        "owner": owner,
         "entities_added": len(extracted.entities),
         "relationships_added": len(extracted.relationships),
         "fetched_log": summary_log,
