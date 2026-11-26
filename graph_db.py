@@ -1,7 +1,7 @@
 import os
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from schemas import ExtractedGraph
+from schemas import ExtractedMemoryGraph
 
 load_dotenv()
 
@@ -51,7 +51,7 @@ class DeveloperMemoryGraphDB:
                 owner=owner.lower(),
             )
 
-    def ingest_graph(self, extracted: ExtractedGraph):
+    def ingest_graph(self, extracted: ExtractedMemoryGraph):
         allowed_labels = {"Developer", "Repository", "Commit", "Issue", "Technology"}
         with self.driver.session() as session:
             for entity in extracted.entities:
