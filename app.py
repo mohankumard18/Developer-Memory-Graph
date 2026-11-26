@@ -76,17 +76,20 @@ def extract_github_graph(owner: str, repo: str) -> ExtractedMemoryGraph:
     commits_data = fetch_github_json(f"{base_api}/commits?per_page=8")
     issues_data = fetch_github_json(f"{base_api}/issues?state=all&per_page=8")
 
-    # Introspect field names on Relationship model in schemas.py so validation always matches
     rel_model = ExtractedMemoryGraph.model_fields["relationships"].annotation.__args__[0]
-    rel_field_name = "type" if "type" in rel_model.model_fields else (
-        "relation" if "relation" in rel_model.model_fields else next(
-            k for k in rel_model.model_fields if k not in {"source", "target", "context"}
+    fields = rel_model.model_fields
+
+    src_key = "source_id" if "source_id" in fields else "source"
+    tgt_key = "target_id" if "target_id" in fields else "target"
+    rel_key = (
+        "relation_type" if "relation_type" in fields else (
+            "type" if "type" in fields else "relation"
         )
     )
 
     def make_rel(src: str, tgt: str, rel_val: str, ctx: str) -> dict:
-        payload = {"source": src, "target": tgt, rel_field_name: rel_val}
-        if "context" in rel_model.model_fields:
+        payload = {src_key: src, tgt_key: tgt, rel_key: rel_val}
+        if "context" in fields:
             payload["context"] = ctx
         return payload
 

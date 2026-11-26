@@ -73,7 +73,8 @@ class DeveloperMemoryGraphDB:
         for rel in extracted.relationships:
             r_data = rel.model_dump() if hasattr(rel, "model_dump") else dict(rel)
             raw_rel = (
-                r_data.get("relation")
+                r_data.get("relation_type")
+                or r_data.get("relation")
                 or r_data.get("type")
                 or r_data.get("relationship")
                 or r_data.get("label")
@@ -82,8 +83,12 @@ class DeveloperMemoryGraphDB:
             rel_type = "".join(
                 c if c.isalnum() or c == "_" else "_" for c in str(raw_rel).upper()
             ) or "RELATED_TO"
-            src = str(r_data.get("source") or r_data.get("from_id") or "").lower()
-            tgt = str(r_data.get("target") or r_data.get("to_id") or "").lower()
+            src = str(
+                r_data.get("source") or r_data.get("source_id") or r_data.get("from_id") or ""
+            ).lower()
+            tgt = str(
+                r_data.get("target_id") or r_data.get("target") or r_data.get("to_id") or ""
+            ).lower()
             if not src or not tgt:
                 continue
             rels_by_type.setdefault(rel_type, []).append(
