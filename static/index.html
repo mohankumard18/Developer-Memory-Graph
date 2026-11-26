@@ -18,21 +18,30 @@
     }
     * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
     h1 { margin: 0; font-size: 1.4rem; color: var(--accent); }
-    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .gh-link { color: var(--text); text-decoration: none; border: 1px solid var(--border); background: var(--card); padding: 9px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+    .gh-link:hover { border-color: var(--accent); color: var(--accent); }
     .grid { display: grid; grid-template-columns: 390px 1fr; gap: 20px; }
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
     .card h2 { margin-top: 0; font-size: 1.05rem; color: var(--accent); }
     textarea, input { width: 100%; background: #0f172a; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 0.9rem; }
-    button { background: var(--accent); color: #0f172a; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+    textarea:focus, input:focus { outline: none; border-color: var(--accent); }
+    button { background: var(--accent); color: #0f172a; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; transition: opacity 0.15s; }
     button.gh-btn { background: var(--purple); color: #ffffff; }
     button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
     #network { width: 100%; height: 480px; background: #0b1120; border-radius: 8px; border: 1px solid var(--border); }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .stats { display: flex; gap: 12px; margin-bottom: 14px; }
     .stat-box { flex: 1; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
     .stat-box span { display: block; font-size: 1.3rem; font-weight: bold; color: var(--green); }
-    .answer-box { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; max-height: 220px; overflow-y: auto; }
+    .answer-box { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 0.9rem; line-height: 1.55; white-space: pre-wrap; max-height: 240px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
     th { color: var(--muted); }
@@ -44,7 +53,10 @@
       <h1>Developer Memory Graph – AI Analytics Platform</h1>
       <div class="subtitle">GitHub Live Import • Gemini AI Extraction • Neo4j AuraDB • NetworkX Centrality • Hybrid GraphRAG</div>
     </div>
-    <button style="width:auto;" onclick="loadGraph()">Refresh Graph</button>
+    <div class="header-actions">
+      <a class="gh-link" href="https://github.com/mohankumard18/Developer-Memory-Graph" target="_blank" rel="noopener">GitHub Source</a>
+      <button style="width:auto;" onclick="loadGraph()">Refresh Graph</button>
+    </div>
   </header>
 
   <div class="grid">
@@ -52,21 +64,21 @@
       <div class="card">
         <h2>1. Import Any Public GitHub Repo</h2>
         <input id="githubUrlInput" type="text" value="https://github.com/mohankumard18/Gym-Membership-Workout-Progress-Management-System" placeholder="https://github.com/owner/repo" />
-        <button class="gh-btn" onclick="ingestGitHub()">Fetch Repo & Build Graph</button>
+        <button id="ghBtn" class="gh-btn" onclick="ingestGitHub()">Fetch Repo & Build Graph</button>
         <div id="githubStatus" style="margin-top:8px; font-size:0.85rem; color:#22c55e;"></div>
       </div>
 
       <div class="card">
         <h2>2. Ingest Custom Engineering Log</h2>
-        <textarea id="logInput" rows="3" placeholder="Paste commit message, PR note, or incident log..."></textarea>
-        <button onclick="ingestLog()">Extract & Store in Neo4j</button>
+        <textarea id="logInput" rows="3" placeholder="e.g., Developer mohankumard18 resolved issue-15 in Developer-Memory-Graph using Neo4j AuraDB and FastAPI."></textarea>
+        <button id="logBtn" onclick="ingestLog()">Extract & Store in Neo4j</button>
         <div id="ingestStatus" style="margin-top:8px; font-size:0.85rem; color:#22c55e;"></div>
       </div>
 
       <div class="card">
         <h2>3. Hybrid GraphRAG Q&A</h2>
-        <input id="questionInput" type="text" value="Summarize the repositories, commits, and technologies stored in the graph." />
-        <button onclick="askQuestion()">Ask Memory Graph</button>
+        <input id="questionInput" type="text" value="Summarize the repositories, commits, and technologies stored in the graph." placeholder="Ask a question about repositories, developers, commits, or tech..." />
+        <button id="askBtn" onclick="askQuestion()">Ask Memory Graph</button>
         <div id="answerOutput" class="answer-box" style="margin-top:10px;">Ask a question to query Neo4j + Gemini...</div>
       </div>
     </div>
@@ -79,6 +91,13 @@
           <div class="stat-box"><span id="densityVal">0.0</span>Graph Density</div>
         </div>
         <div id="network"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#22c55e;"></i>Developer</span>
+          <span><i class="dot" style="background:#fb923c;"></i>Repository</span>
+          <span><i class="dot" style="background:#f472b6;"></i>Technology</span>
+          <span><i class="dot" style="background:#a8a29e;"></i>Commit</span>
+          <span><i class="dot" style="background:#818cf8;"></i>Issue</span>
+        </div>
       </div>
 
       <div class="card">
@@ -152,51 +171,99 @@
     }
 
     async function ingestGitHub() {
-      const repoUrl = document.getElementById("githubUrlInput").value;
+      const repoUrl = document.getElementById("githubUrlInput").value.trim();
       const statusEl = document.getElementById("githubStatus");
-      statusEl.style.color = "#38bdf8";
-      statusEl.innerText = "Fetching commits & languages from GitHub API, extracting with Gemini...";
-      const res = await fetch("/api/ingest-github", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo_url: repoUrl })
-      });
-      const data = await res.json();
-      if (!res.ok) {
+      const btn = document.getElementById("ghBtn");
+      if (!repoUrl) {
         statusEl.style.color = "#f87171";
-        statusEl.innerText = data.detail || "Failed to import repository.";
+        statusEl.innerText = "Please enter a public GitHub repository URL.";
         return;
       }
-      statusEl.style.color = "#22c55e";
-      statusEl.innerText = `Imported ${data.entities_added} entities & ${data.relationships_added} relationships from GitHub!`;
-      loadGraph();
+      btn.disabled = true;
+      statusEl.style.color = "#38bdf8";
+      statusEl.innerText = "Fetching commits & languages from GitHub API, extracting with Gemini...";
+      try {
+        const res = await fetch("/api/ingest-github", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo_url: repoUrl })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          statusEl.style.color = "#f87171";
+          statusEl.innerText = data.detail || "Failed to import repository.";
+          return;
+        }
+        statusEl.style.color = "#22c55e";
+        statusEl.innerText = `Imported ${data.entities_added} entities & ${data.relationships_added} relationships from GitHub!`;
+        loadGraph();
+      } catch (err) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerText = "Network error while importing repository.";
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     async function ingestLog() {
-      const logText = document.getElementById("logInput").value;
+      const logText = document.getElementById("logInput").value.trim();
       const statusEl = document.getElementById("ingestStatus");
+      const btn = document.getElementById("logBtn");
+      if (!logText) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerText = "Please enter an engineering log or commit note first.";
+        return;
+      }
+      btn.disabled = true;
+      statusEl.style.color = "#38bdf8";
       statusEl.innerText = "Extracting entities with Gemini & syncing to Neo4j...";
-      const res = await fetch("/api/ingest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ log_text: logText })
-      });
-      const data = await res.json();
-      statusEl.innerText = `Added ${data.entities_added} entities & ${data.relationships_added} relationships!`;
-      loadGraph();
+      try {
+        const res = await fetch("/api/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ log_text: logText })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          statusEl.style.color = "#f87171";
+          statusEl.innerText = data.detail || "Extraction failed.";
+          return;
+        }
+        statusEl.style.color = "#22c55e";
+        statusEl.innerText = `Added ${data.entities_added} entities & ${data.relationships_added} relationships!`;
+        document.getElementById("logInput").value = "";
+        loadGraph();
+      } catch (err) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerText = "Network error while ingesting log.";
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     async function askQuestion() {
-      const question = document.getElementById("questionInput").value;
+      const question = document.getElementById("questionInput").value.trim();
       const ansEl = document.getElementById("answerOutput");
+      const btn = document.getElementById("askBtn");
+      if (!question) {
+        ansEl.innerText = "Please enter a question first.";
+        return;
+      }
+      btn.disabled = true;
       ansEl.innerText = "Traversing Neo4j subgraph & generating grounded answer...";
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question })
-      });
-      const data = await res.json();
-      ansEl.innerText = data.answer;
+      try {
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        ansEl.innerText = data.answer || data.detail || "No response received.";
+      } catch (err) {
+        ansEl.innerText = "Network error while querying Memory Graph.";
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     loadGraph();
