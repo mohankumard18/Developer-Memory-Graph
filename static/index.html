@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Developer Memory Graph – AI Analytics Platform</title>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 1.4rem; color: var(--accent); }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .grid { display: grid; grid-template-columns: 390px 1fr; gap: 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { margin-top: 0; font-size: 1.05rem; color: var(--accent); }
+    textarea, input { width: 100%; background: #0f172a; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 0.9rem; }
+    button { background: var(--accent); color: #0f172a; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+    button.gh-btn { background: var(--purple); color: #ffffff; }
+    button:hover { opacity: 0.9; }
+    #network { width: 100%; height: 480px; background: #0b1120; border-radius: 8px; border: 1px solid var(--border); }
+    .stats { display: flex; gap: 12px; margin-bottom: 14px; }
+    .stat-box { flex: 1; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+    .stat-box span { display: block; font-size: 1.3rem; font-weight: bold; color: var(--green); }
+    .answer-box { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; max-height: 220px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Developer Memory Graph – AI Analytics Platform</h1>
+      <div class="subtitle">GitHub Live Import • Gemini AI Extraction • Neo4j AuraDB • NetworkX Centrality • Hybrid GraphRAG</div>
+    </div>
+    <button style="width:auto;" onclick="loadGraph()">Refresh Graph</button>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>1. Import Any Public GitHub Repo</h2>
+        <input id="githubUrlInput" type="text" value="https://github.com/mohankumard18/Gym-Membership-Workout-Progress-Management-System" placeholder="https://github.com/owner/repo" />
+        <button class="gh-btn" onclick="ingestGitHub()">Fetch Repo & Build Graph</button>
+        <div id="githubStatus" style="margin-top:8px; font-size:0.85rem; color:#22c55e;"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Ingest Custom Engineering Log</h2>
+        <textarea id="logInput" rows="3" placeholder="Paste commit message, PR note, or incident log..."></textarea>
+        <button onclick="ingestLog()">Extract & Store in Neo4j</button>
+        <div id="ingestStatus" style="margin-top:8px; font-size:0.85rem; color:#22c55e;"></div>
+      </div>
+
+      <div class="card">
+        <h2>3. Hybrid GraphRAG Q&A</h2>
+        <input id="questionInput" type="text" value="Summarize the repositories, commits, and technologies stored in the graph." />
+        <button onclick="askQuestion()">Ask Memory Graph</button>
+        <div id="answerOutput" class="answer-box" style="margin-top:10px;">Ask a question to query Neo4j + Gemini...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="stats">
+          <div class="stat-box"><span id="nodeCount">0</span>Nodes</div>
+          <div class="stat-box"><span id="edgeCount">0</span>Relationships</div>
+          <div class="stat-box"><span id="densityVal">0.0</span>Graph Density</div>
+        </div>
+        <div id="network"></div>
+      </div>
+
+      <div class="card">
+        <h2>4. NetworkX Graph Analytics (Top Centrality & Impact)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Entity ID</th>
+              <th>Label</th>
+              <th>Degree</th>
+              <th>Betweenness</th>
+              <th>PageRank</th>
+            </tr>
+          </thead>
+          <tbody id="metricsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const COLORS = {
+      Developer: "#22c55e",
+      Repository: "#fb923c",
+      Technology: "#f472b6",
+      Commit: "#a8a29e",
+      Issue: "#818cf8"
+    };
+
+    async function loadGraph() {
+      const res = await fetch("/api/graph");
+      const data = await res.json();
+
+      document.getElementById("nodeCount").innerText = data.metrics.total_nodes || 0;
+      document.getElementById("edgeCount").innerText = data.metrics.total_edges || 0;
+      document.getElementById("densityVal").innerText = data.metrics.density || 0;
+
+      const visNodes = data.nodes.map(n => ({
+        id: n.id,
+        label: `${n.id}\n(${n.label})`,
+        title: n.summary,
+        color: COLORS[n.label] || "#38bdf8",
+        font: { color: "#f8fafc" }
+      }));
+
+      const visEdges = data.edges.map(e => ({
+        from: e.from,
+        to: e.to,
+        label: e.label,
+        title: e.title,
+        arrows: "to",
+        color: { color: "#64748b" },
+        font: { color: "#cbd5e1", size: 11, strokeWidth: 0 }
+      }));
+
+      const container = document.getElementById("network");
+      new vis.Network(container, { nodes: visNodes, edges: visEdges }, {
+        physics: { stabilization: true }
+      });
+
+      const tbody = document.getElementById("metricsTable");
+      tbody.innerHTML = (data.metrics.top_central_nodes || []).map(row => `
+        <tr>
+          <td><strong>${row.id}</strong></td>
+          <td>${row.label}</td>
+          <td>${row.degree_centrality}</td>
+          <td>${row.betweenness_centrality}</td>
+          <td>${row.pagerank}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function ingestGitHub() {
+      const repoUrl = document.getElementById("githubUrlInput").value;
+      const statusEl = document.getElementById("githubStatus");
+      statusEl.style.color = "#38bdf8";
+      statusEl.innerText = "Fetching commits & languages from GitHub API, extracting with Gemini...";
+      const res = await fetch("/api/ingest-github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repo_url: repoUrl })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerText = data.detail || "Failed to import repository.";
+        return;
+      }
+      statusEl.style.color = "#22c55e";
+      statusEl.innerText = `Imported ${data.entities_added} entities & ${data.relationships_added} relationships from GitHub!`;
+      loadGraph();
+    }
+
+    async function ingestLog() {
+      const logText = document.getElementById("logInput").value;
+      const statusEl = document.getElementById("ingestStatus");
+      statusEl.innerText = "Extracting entities with Gemini & syncing to Neo4j...";
+      const res = await fetch("/api/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ log_text: logText })
+      });
+      const data = await res.json();
+      statusEl.innerText = `Added ${data.entities_added} entities & ${data.relationships_added} relationships!`;
+      loadGraph();
+    }
+
+    async function askQuestion() {
+      const question = document.getElementById("questionInput").value;
+      const ansEl = document.getElementById("answerOutput");
+      ansEl.innerText = "Traversing Neo4j subgraph & generating grounded answer...";
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      });
+      const data = await res.json();
+      ansEl.innerText = data.answer;
+    }
+
+    loadGraph();
+  </script>
+</body>
+</html>

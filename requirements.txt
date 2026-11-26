@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+google-genai
+neo4j
+pydantic
+python-dotenv
+networkx
+numpy
+scipy
