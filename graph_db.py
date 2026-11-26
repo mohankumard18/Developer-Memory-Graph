@@ -55,25 +55,42 @@ class DeveloperMemoryGraphDB:
         allowed_labels = {"Developer", "Repository", "Commit", "Issue", "Technology"}
         nodes_by_label: dict[str, list[dict]] = {}
         for entity in extracted.entities:
-            label = entity.label if entity.label in allowed_labels else "Entity"
+            e_data = entity.model_dump() if hasattr(entity, "model_dump") else dict(entity)
+            raw_label = e_data.get("label") or e_data.get("type") or "Entity"
+            label = raw_label if raw_label in allowed_labels else "Entity"
+            ent_id = str(e_data.get("id", "")).lower()
+            if not ent_id:
+                continue
             nodes_by_label.setdefault(label, []).append(
                 {
-                    "id": entity.id.lower(),
-                    "name": entity.name,
-                    "summary": entity.summary,
+                    "id": ent_id,
+                    "name": e_data.get("name") or ent_id,
+                    "summary": e_data.get("summary") or "",
                 }
             )
 
         rels_by_type: dict[str, list[dict]] = {}
         for rel in extracted.relationships:
+            r_data = rel.model_dump() if hasattr(rel, "model_dump") else dict(rel)
+            raw_rel = (
+                r_data.get("relation")
+                or r_data.get("type")
+                or r_data.get("relationship")
+                or r_data.get("label")
+                or "RELATED_TO"
+            )
             rel_type = "".join(
-                c if c.isalnum() or c == "_" else "_" for c in rel.relation.upper()
+                c if c.isalnum() or c == "_" else "_" for c in str(raw_rel).upper()
             ) or "RELATED_TO"
+            src = str(r_data.get("source") or r_data.get("from_id") or "").lower()
+            tgt = str(r_data.get("target") or r_data.get("to_id") or "").lower()
+            if not src or not tgt:
+                continue
             rels_by_type.setdefault(rel_type, []).append(
                 {
-                    "source": rel.source.lower(),
-                    "target": rel.target.lower(),
-                    "context": rel.context,
+                    "source": src,
+                    "target": tgt,
+                    "context": r_data.get("context") or r_data.get("description") or "",
                 }
             )
 
