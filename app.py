@@ -1,3 +1,4 @@
+import os
 import json
 import urllib.request
 from urllib.parse import urlparse
@@ -45,13 +46,15 @@ class AskRequest(BaseModel):
 
 
 def fetch_github_json(url: str):
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "Developer-Memory-Graph-App",
-        },
-    )
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "Developer-Memory-Graph-App",
+    }
+    gh_token = os.getenv("GITHUB_TOKEN")
+    if gh_token:
+        headers["Authorization"] = f"Bearer {gh_token}"
+
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
