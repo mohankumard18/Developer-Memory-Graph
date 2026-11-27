@@ -1,6 +1,6 @@
 # Developer Memory Graph – AI Analytics Platform
 
-> **Live Demo:** [https://developer-memory-graph.onrender.com](https://developer-memory-graph.onrender.com)  
+> **Live Demo:** https://developer-memory-graph.onrender.com
 > *(Note: Hosted on Render's free tier—allow ~40 seconds on the initial request if the service is waking from sleep.)*
 
 An AI-powered **Engineering Knowledge Graph & GraphRAG Analytics Platform** that transforms unstructured developer logs and live public GitHub repositories into a connected **Neo4j AuraDB** knowledge graph, computes **NetworkX** graph centrality metrics, and answers technical questions using **Hybrid GraphRAG** grounded in live graph traversals.
