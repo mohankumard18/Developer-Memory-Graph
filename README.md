@@ -14,9 +14,8 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![Render](https://img.shields.io/badge/Deployed_on-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
 
----<img width="1847" height="1138" alt="devgraphDASHBOARD3 png" src="https://github.com/user-attachments/assets/74b89795-7a68-45e6-9a10-7e77aa268e09" />
-<img width="1846" height="1137" alt="devgraphDASHBOARD2 png (2)" src="https://github.com/user-attachments/assets/5e7c0bf3-644c-4d8b-8a9f-cfc57b7b8774" />
-<img width="1848" height="1138" alt="devgraphDASHBOARD1 png" src="https://github.com/user-attachments/assets/40ba686c-6a6a-427d-a0af-fe532e209806" />
+<img width="1848" height="1138" alt="devgraphDASHBOARD1 png" src="https://github.com/user-attachments/assets/ccd27f8f-91f2-4d1a-aa4b-c4c0ac8a3538" />
+<img width="1846" height="1137" alt="devgraphDASHBOARD2 png (2)" src="https://github.com/user-attachments/assets/1dae5bf5-cb10-4725-8b3f-a575f3f9668d" />
 
 ## 💡 The Problem
 
